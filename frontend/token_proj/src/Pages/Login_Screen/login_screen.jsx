@@ -1,77 +1,105 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Building2, Phone, CreditCard, LogIn } from "lucide-react";
+import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Button } from "../components/ui/button";
-import { FileText } from "lucide-react";
-import { toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 
-export function Login() {
+export default function Login() {
   const navigate = useNavigate();
   const [contactNumber, setContactNumber] = useState("");
-  const [residentPermitId, setResidentPermitId] = useState("");
+  const [permitId, setPermitId] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = (e) => {
     e.preventDefault();
-    
-    if (!contactNumber || !residentPermitId) {
-      toast.error("Please fill in all fields");
+    setError("");
+
+    if (!contactNumber || !permitId) {
+      setError("Please fill in all fields");
       return;
     }
 
-    // Simple validation for demo purposes
-    if (contactNumber.length >= 10 && residentPermitId.length >= 6) {
-      localStorage.setItem("visaServiceAuth", "true");
-      localStorage.setItem("userContact", contactNumber);
-      localStorage.setItem("userPermitId", residentPermitId);
-      toast.success("Login successful!");
-      navigate("/home");
-    } else {
-      toast.error("Invalid credentials. Contact number must be at least 10 digits and Permit ID at least 6 characters.");
+    if (contactNumber.length < 10) {
+      setError("Please enter a valid contact number");
+      return;
     }
+
+    if (permitId.length < 6) {
+      setError("Please enter a valid resident permit ID");
+      return;
+    }
+
+    // Store authentication
+    localStorage.setItem("consulateAuth", JSON.stringify({
+      contactNumber,
+      permitId,
+      loginTime: new Date().toISOString()
+    }));
+
+    navigate("/home");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center">
-            <FileText className="w-8 h-8 text-white" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="space-y-3 text-center pb-6">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+            <Building2 className="w-9 h-9 text-white" />
           </div>
-          <div>
-            <CardTitle className="text-2xl">Visa Services Portal</CardTitle>
-            <CardDescription>Sign in to access visa application services</CardDescription>
-          </div>
+          <CardTitle className="text-3xl">Consulate Portal</CardTitle>
+          <CardDescription className="text-base">
+            Access consular services with your credentials
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="contact">Contact Number</Label>
+              <Label htmlFor="contact" className="flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                Contact Number
+              </Label>
               <Input
                 id="contact"
                 type="tel"
                 placeholder="Enter your contact number"
                 value={contactNumber}
                 onChange={(e) => setContactNumber(e.target.value)}
-                required
+                className="h-11"
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="permitId">Resident Permit ID</Label>
+              <Label htmlFor="permit" className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4" />
+                Resident Permit ID
+              </Label>
               <Input
-                id="permitId"
+                id="permit"
                 type="text"
                 placeholder="Enter your resident permit ID"
-                value={residentPermitId}
-                onChange={(e) => setResidentPermitId(e.target.value)}
-                required
+                value={permitId}
+                onChange={(e) => setPermitId(e.target.value)}
+                className="h-11"
               />
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
+                {error}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full h-11 text-base bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              <LogIn className="w-5 h-5 mr-2" />
+              Access Portal
             </Button>
           </form>
+
+          <div className="mt-6 pt-6 border-t text-center text-sm text-gray-500">
+            Secure access to official consular services
+          </div>
         </CardContent>
       </Card>
     </div>
