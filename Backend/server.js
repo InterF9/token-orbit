@@ -22,9 +22,17 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/lpassport', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/lpassport', (req, res) => {
+  res.json({ 
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
@@ -32,7 +40,7 @@ app.get('/lpassport', (req, res) => {
 
 app.get('/renewpassport', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
@@ -40,56 +48,56 @@ app.get('/renewpassport', (req, res) => {
 
 app.get('/visa', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 app.get('/termination', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 app.get('/legal', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 app.get('/distress', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 app.get('/cultural', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 app.get('/employment', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 app.get('/document', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
 app.get('/calamity', (req, res) => {
   res.json({ 
-    status: 'healthy',
+    status: 'hi',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
