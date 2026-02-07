@@ -12,20 +12,43 @@ const EmailLogin = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!email.trim() || !password.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error("Please fill all fields");
       return;
     }
-    setLoading(true);
-    // Simulate authentication
-    setTimeout(() => {
-      sessionStorage.setItem("consular_user", JSON.stringify({ email }));
+
+    try {
+      setLoading(true);
+      const res = await fetch("http://localhost:3000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Login failed");
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       toast.success("Login successful!");
       navigate("/dashboard");
-    }, 800);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Login failed"));
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-8 bg-background">

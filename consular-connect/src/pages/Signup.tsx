@@ -15,28 +15,48 @@ const Signup = () => {
   const [permitId, setPermitId] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!name.trim() || !email.trim() || !password.trim() || !contactNumber.trim() || !permitId.trim()) {
       toast.error("Please fill in all fields");
       return;
     }
-    if (contactNumber.trim().length < 7) {
-      toast.error("Please enter a valid contact number");
-      return;
-    }
-    if (permitId.trim().length < 3) {
-      toast.error("Please enter a valid Resident Permit ID");
-      return;
-    }
-    setLoading(true);
-    // Simulate registration
-    setTimeout(() => {
-      sessionStorage.setItem("consular_user", JSON.stringify({ name, email, contactNumber, permitId }));
-      toast.success("Registration successful!");
+
+    try {
+      setLoading(true);
+
+      const res = await fetch("http://localhost:3000/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          phone: contactNumber.trim(),
+          resident_id: permitId.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Signup failed");
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      toast.success("Signup successful!");
       navigate("/dashboard");
-    }, 800);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Signup failed"));
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="min-h-screen flex">

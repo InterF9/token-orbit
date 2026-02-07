@@ -23,14 +23,15 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const user = sessionStorage.getItem("consular_user");
+    const user = localStorage.getItem("user");
     if (!user) {
       navigate("/");
     }
   }, [navigate]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("consular_user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     toast.success("Logged out successfully");
     navigate("/");
   };

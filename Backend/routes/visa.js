@@ -31,7 +31,7 @@ router.post("/", auth, async (req, res) => {
 router.get("/", auth, async (req, res) => {
   try {
     const result = await db.query(
-      "SELECT * FROM visa_applications ORDER BY created_at DESC"
+      "SELECT * FROM visa_applications ORDER BY priority_score DESC"
     );
     res.json(result.rows);
   } catch (error) {

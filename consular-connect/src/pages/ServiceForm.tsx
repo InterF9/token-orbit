@@ -143,6 +143,105 @@ const serviceConfigs: Record<string, ServiceConfig> = {
   },
 };
 
+const SERVICE_WEIGHT: Record<string, number> = {
+  LOST_PASSPORT: 100,
+  PASSPORT_RENEWAL: 85,
+  VISA: 85,
+  TERMINATION: 90,
+  LEGAL: 80,
+  DISTRESS: 90,
+  CULTURAL: 40,
+  EMPLOYMENT: 50,
+  DOCUMENT: 60,
+  CALAMITY: 90,
+};
+
+const SERVICE_CODE: Record<string, string> = {
+  "lost-passport": "LOST_PASSPORT",
+  "passport-renewal": "PASSPORT_RENEWAL",
+  "visa-issues": "VISA",
+  "termination-departure": "TERMINATION",
+  "legal-support": "LEGAL",
+  "distress-relief": "DISTRESS",
+  "cultural-events": "CULTURAL",
+  "employment-help": "EMPLOYMENT",
+  "document-verification": "DOCUMENT",
+  "calamities-support": "CALAMITY",
+};
+
+const toNumber = (value?: string) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const calculatePriority = (request: {
+  service: string;
+  vulnerable?: boolean;
+  flightHours?: number;
+  type?: string;
+  imp?: string;
+  daysToExpiry?: number;
+  severity?: string;
+  hearingInDays?: number;
+}) => {
+  const Ws = SERVICE_WEIGHT[request.service] ?? 0;
+  let Wu = 0;
+  const Wr = request.vulnerable ? 15 : 0;
+
+  switch (request.service) {
+    case "LOST_PASSPORT":
+      if (request.flightHours !== undefined) {
+        if (request.flightHours <= 24) Wu += 60;
+        else if (request.flightHours <= 72) Wu += 40;
+        else Wu += 10;
+      }
+      if (request.type === "TOURIST") Wu += 20;
+      else if (request.type) Wu += 5;
+      break;
+    case "CULTURAL":
+      if (request.imp === "HIGH PROFILE") Wu += 25;
+      else if (request.imp === "COMMUNITY") Wu += 15;
+      else Wu += 5;
+      break;
+    case "VISA":
+      Wu += 30;
+      break;
+    case "PASSPORT_RENEWAL":
+      if (request.daysToExpiry !== undefined) {
+        if (request.daysToExpiry <= 7) Wu += 60;
+        else if (request.daysToExpiry <= 30) Wu += 50;
+        else Wu += 30;
+      }
+      break;
+    case "CALAMITY":
+      if (request.severity === "HIGH") Wu += 60;
+      else Wu += 50;
+      break;
+    case "LEGAL":
+      if (request.hearingInDays !== undefined) {
+        if (request.hearingInDays <= 7) Wu += 40;
+        else Wu += 30;
+      }
+      break;
+    case "EMPLOYMENT":
+      Wu += 10;
+      break;
+    case "DISTRESS":
+      Wu += 35;
+      break;
+    case "TERMINATION":
+      Wu += 50;
+      break;
+    case "DOCUMENT":
+      Wu += 20;
+      break;
+    default:
+      break;
+  }
+
+  return Ws + Wu + Wr;
+};
+
 const ServiceForm = () => {
   const { serviceId } = useParams<{ serviceId: string }>();
   const navigate = useNavigate();
@@ -150,7 +249,7 @@ const ServiceForm = () => {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    const user = sessionStorage.getItem("consular_user");
+    const user = localStorage.getItem("user");
     if (!user) navigate("/");
   }, [navigate]);
 
@@ -168,7 +267,7 @@ const ServiceForm = () => {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Validate required fields
     const missingFields = config.extraFields
@@ -185,8 +284,49 @@ const ServiceForm = () => {
       return;
     }
 
-    setSubmitted(true);
-    toast.success("Request submitted successfully!");
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Please login to submit a request");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const serviceCode = SERVICE_CODE[serviceId || ""] || "";
+      const priorityScore = calculatePriority({
+        service: serviceCode,
+        vulnerable: formData.vulnerable === "Yes",
+        flightHours: toNumber(formData.flightHours),
+        type: formData.visitorStatus,
+        imp: formData.eventProfile,
+        daysToExpiry: toNumber(formData.daysToExpiry),
+        severity: formData.severity,
+        hearingInDays: toNumber(formData.hearingInDays),
+      });
+
+      const res = await fetch("http://localhost:3000/visa", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          full_name: formData.fullName?.trim(),
+          email: formData.email?.trim(),
+          nationality: formData.nationality?.trim(),
+          current_location: formData.currentLocation?.trim(),
+          priority_score: priorityScore,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit request");
+
+      setSubmitted(true);
+      toast.success("Request submitted successfully!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit request");
+    }
   };
 
   if (submitted) {
