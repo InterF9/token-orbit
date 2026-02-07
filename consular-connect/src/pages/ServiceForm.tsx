@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Shield, CheckCircle } from "lucide-react";
+import { ArrowLeft, Shield, CheckCircle, Users, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 interface ServiceConfig {
@@ -174,6 +174,16 @@ const toNumber = (value?: string) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseJwt = (token: string) => {
+  try {
+    const payload = token.split(".")[1];
+    const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(decoded) as { id?: string };
+  } catch {
+    return {} as { id?: string };
+  }
+};
+
 const calculatePriority = (request: {
   service: string;
   vulnerable?: boolean;
@@ -247,10 +257,27 @@ const ServiceForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [queueAhead, setQueueAhead] = useState<number | null>(null);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [submissionKey, setSubmissionKey] = useState<string | null>(null);
 
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (!user) navigate("/");
+    const userRaw = localStorage.getItem("user");
+    if (!userRaw) {
+      navigate("/");
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userRaw) as { id?: string; email?: string };
+      const key = `application_submitted_${user.id || user.email || "unknown"}`;
+      setSubmissionKey(key);
+      setAlreadySubmitted(localStorage.getItem(key) === "true");
+    } catch {
+      setSubmissionKey(null);
+      setAlreadySubmitted(false);
+    }
   }, [navigate]);
 
   const config = serviceId ? serviceConfigs[serviceId] : null;
@@ -269,6 +296,10 @@ const ServiceForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (alreadySubmitted) {
+      toast.error("You already submitted an application");
+      return;
+    }
     // Validate required fields
     const missingFields = config.extraFields
       .filter((f) => f.required && !formData[f.id]?.trim())
@@ -323,6 +354,28 @@ const ServiceForm = () => {
       if (!res.ok) throw new Error(data.error || "Failed to submit request");
 
       setSubmitted(true);
+      if (submissionKey) {
+        localStorage.setItem(submissionKey, "true");
+        setAlreadySubmitted(true);
+      }
+      setQueueLoading(true);
+      try {
+        const queueRes = await fetch("http://localhost:3000/visa", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const queueData = await queueRes.json();
+        if (queueRes.ok && typeof queueData.queue_ahead === "number") {
+          setQueueAhead(queueData.queue_ahead);
+        } else {
+          setQueueAhead(0);
+        }
+      } catch {
+        setQueueAhead(0);
+      } finally {
+        setQueueLoading(false);
+      }
       toast.success("Request submitted successfully!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit request");
@@ -330,6 +383,12 @@ const ServiceForm = () => {
   };
 
   if (submitted) {
+    const token = localStorage.getItem("token");
+    const userId = token ? parseJwt(token).id : undefined;
+    const reference = userId ? `${userId}` : `${Date.now().toString(36).toUpperCase()}`;
+    const queueCount = queueAhead ?? 0;
+    const showQueue = !queueLoading;
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-6">
@@ -340,17 +399,72 @@ const ServiceForm = () => {
           <p className="text-muted-foreground mb-2">
             Your <strong>{config.title}</strong> request has been received.
           </p>
-          <p className="text-sm text-muted-foreground mb-8">
-            Reference: <span className="font-mono text-foreground">CSP-{Date.now().toString(36).toUpperCase()}</span>
+          <p className="text-sm text-muted-foreground mb-6">
+            Reference: <span className="font-mono text-foreground">{reference}</span>
           </p>
+
+          <div className="bg-card border border-border rounded-lg p-5 mb-8">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">Queue Status</p>
+            {!showQueue && (
+              <p className="text-sm text-muted-foreground">Loading queue status...</p>
+            )}
+            {showQueue && (
+              <>
+                <div className="flex items-center justify-center gap-1.5 mb-3">
+                  {Array.from({ length: Math.min(queueCount, 8) }).map((_, i) => (
+                    <div key={i} className="w-7 h-7 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
+                      <Users className="w-3 h-3" />
+                    </div>
+                  ))}
+                  <div className="w-9 h-9 rounded-full bg-accent text-accent-foreground ring-2 ring-accent/30 ring-offset-2 ring-offset-card flex items-center justify-center">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="flex items-center gap-1 ml-1">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div className="w-7 h-7 rounded-full bg-success/15 flex items-center justify-center">
+                    <CheckCircle className="w-3.5 h-3.5 text-success" />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-4">
+                  <span className="font-semibold text-foreground">{queueCount}</span> requests ahead of you
+                </p>
+                <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div
+                    className="h-full bg-accent rounded-full"
+                    style={{
+                      width: `${Math.max(5, Math.min(100, 100 - queueCount * 6))}%`,
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="flex gap-3 justify-center">
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Back to Dashboard
             </Button>
-            <Button onClick={() => { setSubmitted(false); setFormData({}); }}>
-              New Request
-            </Button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (alreadySubmitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md px-6">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-warning/10 flex items-center justify-center">
+            <Shield className="w-7 h-7 text-warning" />
+          </div>
+          <h2 className="text-2xl font-display font-bold text-foreground mb-2">Application Limit Reached</h2>
+          <p className="text-muted-foreground mb-6">
+            You have already submitted an application. You can only submit once.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );

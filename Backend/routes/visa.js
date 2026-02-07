@@ -27,16 +27,35 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-// GET - Get all visa applications
+// GET - Get queue position count for authenticated user's latest application
 router.get("/", auth, async (req, res) => {
   try {
-    const result = await db.query(
-      "SELECT * FROM visa_applications ORDER BY priority_score DESC"
+    const currentResult = await db.query(
+      `SELECT id, priority_score
+       FROM visa_applications
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [req.user.id]
     );
-    res.json(result.rows);
+
+    if (currentResult.rows.length === 0) {
+      return res.json({ queue_ahead: 0 });
+    }
+
+    const { id, priority_score } = currentResult.rows[0];
+    const countResult = await db.query(
+      `SELECT COUNT(*)::int AS queue_ahead
+       FROM visa_applications
+       WHERE priority_score >= $1
+         AND id <> $2`,
+      [priority_score, id]
+    );
+
+    res.json({ queue_ahead: countResult.rows[0].queue_ahead });
   } catch (error) {
-    console.error("Fetch visa applications error:", error);
-    res.status(500).json({ error: "Failed to fetch visa applications" });
+    console.error("Fetch queue count error:", error);
+    res.status(500).json({ error: "Failed to fetch queue count" });
   }
 });
 
