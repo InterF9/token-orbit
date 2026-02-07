@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -118,5 +117,14 @@
   .service-card:hover {
     @apply shadow-lg border-accent;
     transform: translateY(-2px);
+  }
+
+  @keyframes queue-slide {
+    from { opacity: 0; transform: translateX(-20px) scale(0.8); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+  }
+
+  @keyframes queue-progress {
+    from { width: 0%; }
   }
 }
