@@ -1,0 +1,27 @@
+{
+  "name": "tokenorbit",
+  "version": "1.0.0",
+  "description": "a transparent queueing system",
+  "keywords": [
+    "tokenorbit",
+    "queue"
+  ],
+  "homepage": "https://github.com/InterF9/token-orbit#readme",
+  "bugs": {
+    "url": "https://github.com/InterF9/token-orbit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InterF9/token-orbit.git"
+  },
+  "license": "ISC",
+  "author": "\"ball coders\"",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "node.js": "^0.0.1-security"
+  }
+}
